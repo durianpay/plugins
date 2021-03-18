@@ -29,7 +29,7 @@ import java.util.Map;
 
 public class FlutterWebView implements PlatformView, MethodCallHandler {
   private static final String JS_CHANNEL_NAMES_FIELD = "javascriptChannelNames";
-  private final WebView webView;
+  private final InputAwareWebView webView;
   private final MethodChannel methodChannel;
   private final FlutterWebViewClient flutterWebViewClient;
   private final Handler platformThreadHandler;
@@ -72,11 +72,6 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
 
       return true;
     }
-
-    @Override
-    public void onProgressChanged(WebView view, int progress) {
-      flutterWebViewClient.onLoadingProgress(progress);
-    }
   }
 
   @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
@@ -92,13 +87,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
     DisplayManager displayManager =
         (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
     displayListenerProxy.onPreWebViewInitialization(displayManager);
-
-    Boolean usesHybridComposition = (Boolean) params.get("usesHybridComposition");
-    webView =
-        (usesHybridComposition)
-            ? new WebView(context)
-            : new InputAwareWebView(context, containerView);
-
+    webView = new InputAwareWebView(context, containerView);
     displayListenerProxy.onPostWebViewInitialization(displayManager);
 
     platformThreadHandler = new Handler(context.getMainLooper());
@@ -148,9 +137,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
   // of Flutter but used as an override anyway wherever it's actually defined.
   // TODO(mklim): Add the @Override annotation once flutter/engine#9727 rolls to stable.
   public void onInputConnectionUnlocked() {
-    if (webView instanceof InputAwareWebView) {
-      ((InputAwareWebView) webView).unlockInputConnection();
-    }
+    webView.unlockInputConnection();
   }
 
   // @Override
@@ -160,9 +147,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
   // of Flutter but used as an override anyway wherever it's actually defined.
   // TODO(mklim): Add the @Override annotation once flutter/engine#9727 rolls to stable.
   public void onInputConnectionLocked() {
-    if (webView instanceof InputAwareWebView) {
-      ((InputAwareWebView) webView).lockInputConnection();
-    }
+    webView.lockInputConnection();
   }
 
   // @Override
@@ -172,9 +157,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
   // of Flutter but used as an override anyway wherever it's actually defined.
   // TODO(mklim): Add the @Override annotation once stable passes v1.10.9.
   public void onFlutterViewAttached(View flutterView) {
-    if (webView instanceof InputAwareWebView) {
-      ((InputAwareWebView) webView).setContainerView(flutterView);
-    }
+    webView.setContainerView(flutterView);
   }
 
   // @Override
@@ -184,9 +167,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
   // of Flutter but used as an override anyway wherever it's actually defined.
   // TODO(mklim): Add the @Override annotation once stable passes v1.10.9.
   public void onFlutterViewDetached() {
-    if (webView instanceof InputAwareWebView) {
-      ((InputAwareWebView) webView).setContainerView(null);
-    }
+    webView.setContainerView(null);
   }
 
   @Override
@@ -388,16 +369,10 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
             webView.setWebContentsDebuggingEnabled(debuggingEnabled);
           }
           break;
-        case "hasProgressTracking":
-          flutterWebViewClient.hasProgressTracking = (boolean) settings.get(key);
-          break;
         case "gestureNavigationEnabled":
           break;
         case "userAgent":
           updateUserAgent((String) settings.get(key));
-          break;
-        case "allowsInlineMediaPlayback":
-          // no-op inline media playback is always allowed on Android.
           break;
         default:
           throw new IllegalArgumentException("Unknown WebView setting: " + key);
@@ -441,9 +416,7 @@ public class FlutterWebView implements PlatformView, MethodCallHandler {
   @Override
   public void dispose() {
     methodChannel.setMethodCallHandler(null);
-    if (webView instanceof InputAwareWebView) {
-      ((InputAwareWebView) webView).dispose();
-    }
+    webView.dispose();
     webView.destroy();
   }
 }
