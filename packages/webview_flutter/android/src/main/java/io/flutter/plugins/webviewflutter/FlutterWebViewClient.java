@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.annotation.RequiresApi;
@@ -70,6 +71,10 @@ class FlutterWebViewClient {
         return "unsupportedAuthScheme";
       case WebViewClient.ERROR_UNSUPPORTED_SCHEME:
         return "unsupportedScheme";
+      case 401:
+        return "badUrl";
+      case 500:
+        return "badUrl";
     }
 
     final String message =
@@ -203,6 +208,15 @@ class FlutterWebViewClient {
       }
 
       @Override
+      public void onReceivedHttpError(
+        WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+          if (errorResponse.getStatusCode() == 500 || (errorResponse.getStatusCode() == 401)) {
+            FlutterWebViewClient.this.onWebResourceError(errorResponse.getStatusCode(), errorResponse.getReasonPhrase().toString(), 
+            request.getUrl().toString());
+          }
+      }
+
+      @Override
       public void onUnhandledKeyEvent(WebView view, KeyEvent event) {
         // Deliberately empty. Occasionally the webview will mark events as having failed to be
         // handled even though they were handled. We don't want to propagate those as they're not
@@ -248,6 +262,15 @@ class FlutterWebViewClient {
       public void onReceivedError(
           WebView view, int errorCode, String description, String failingUrl) {
         FlutterWebViewClient.this.onWebResourceError(errorCode, description, failingUrl);
+      }
+
+      @Override
+      public void onReceivedHttpError(
+        WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+          if (errorResponse.getStatusCode() == 500 || (errorResponse.getStatusCode() == 401)) {
+            FlutterWebViewClient.this.onWebResourceError(errorResponse.getStatusCode(), errorResponse.getReasonPhrase().toString(), 
+            request.getUrl().toString());
+          }
       }
 
       @Override
